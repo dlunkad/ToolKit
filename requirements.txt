@@ -1,1 +1,2 @@
-st_aggrid
+streamlit-aggrid
+openpyxl
