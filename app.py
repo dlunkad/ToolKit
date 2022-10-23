@@ -1,4 +1,3 @@
-from hashlib import new
 from re import sub
 import streamlit as st
 import pandas as pd
@@ -59,7 +58,7 @@ with st.form(key='form2'):
     gridOptions = builder.build()
     grid_return = AgGrid(df, gridOptions=gridOptions)
     submit_data = st.form_submit_button('Calculate')
-
+    
     solution_df = st.session_state.get('solution')
     if submit_data:
         data = grid_return['data']
@@ -111,7 +110,6 @@ def to_excel(df):
     writer.save()
     processed_data = output.getvalue()
     return processed_data
-    
 history = st.session_state.get('history')
 if history is not None:
     st.write("History")
