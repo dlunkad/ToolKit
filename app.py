@@ -1,3 +1,4 @@
+from textwrap import indent
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -15,6 +16,8 @@ menu = [
 choice = st.sidebar.selectbox("Menu", menu)
 if choice != st.session_state.get('prev_choice'):
     for key in st.session_state.keys():
+        if key=='history':
+            continue
         del st.session_state[key]
 
 st.subheader(choice)
@@ -38,19 +41,19 @@ st.session_state['prev_choice'] = choice
 
 with st.form(key='form1'):
     rates = [np.NaN]*len(rows)
-    st.write("Enter the interest rate per period: ")
     for i in range(len(rows)):
-        rates[i] = st.number_input(label = rows[i], key="interest-{}".format(rows[i]), min_value = 0, max_value = 100)
+        rates[i] = st.number_input(label = "Enter the interest rate per period: {} (%)".format(rows[i]), key="interest-{}".format(rows[i]), min_value = 0, max_value = 100)
     n = st.number_input(label = "Enter the number of interest periods: ", key="year", min_value=1)
     submit = st.form_submit_button('Confirm')
+    rates_df = pd.DataFrame(columns = rows)
+    rates_df.loc[len(rates_df), rates_df.columns] = rates
     if not np.isnan(rates).any() and submit :
         st.session_state['data'] = None
         st.session_state['solution'] = None
-        st.session_state['history'] = None
 
 data = [[np.NaN]*len(rows)]*n
 with st.form(key='form2'):
-    years = np.arange(1,n+1)
+    years = np.arange(n)
     df = pd.DataFrame(data, index = years, columns=rows)
     df.reset_index(inplace=True)
     df = df.rename(columns = {'index':'Year'})
@@ -70,7 +73,6 @@ with st.form(key='form2'):
         old_df = st.session_state.get('old_data')
         if old_df is None or not old_df.equals(new_df):
             st.session_state['old_data'] = new_df
-            st.session_state['history'] = None
         if not new_df.isnull().values.any():
             interest = 0
             denominator = 1
@@ -101,15 +103,17 @@ with st.form(key='form2'):
             solution_df.insert(0, "Interquartile", IQR, allow_duplicates=True)
             solution_df.set_index('Interquartile', inplace=True)
             st.session_state['solution'] = solution_df
-
-            history = st.session_state.get('history')
-            if history is None:
-                history = pd.DataFrame(columns = ["75th", "50th","25th"])
-            history.loc[len(history), history.columns] = solution[0], solution[1], solution[2]
-            st.session_state['history'] = history
+            st.session_state['new_df'] = new_df
 
     if solution_df is not None and not solution_df.isnull().values.any():
         st.write(solution_df)
+        save = st.form_submit_button('Save')
+        if save:
+            history = st.session_state.get('history')
+            if history is None:
+                history = pd.DataFrame(columns = ["Rate", "Input", "75th", "50th","25th"])
+            history.loc[len(history), history.columns] = rates_df, st.session_state.get('new_df'), solution_df.iloc[0,0], solution_df.iloc[1,0], solution_df.iloc[2,0]
+            st.session_state['history'] = history
 
 def to_excel(df):
     output = BytesIO()
@@ -119,8 +123,41 @@ def to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 history = st.session_state.get('history')
+i = 0
 if history is not None:
     st.write("History")
-    st.write(history)
+    rate, ip, op, delete = st.columns(4)
+    with rate:
+        st.write("Rate of interest")
+    with ip:
+        st.write("Input")
+    with op:
+        st.write("Output")
+    with delete:
+        delete_all = st.button('Clear All')
+        if delete_all:
+            history = None
+            st.session_state['history'] = history
+            st.experimental_rerun()
+    for idx in history.index:
+        roi, ip, op, delete = st.columns(4)
+        rate = history.loc[idx][0]
+        input = history.loc[idx][1]
+        output = history.loc[idx][2:]
+        with roi:
+            st.write(rate)
+        with ip:
+            st.write(input)
+        with op:
+            st.write(output)
+        with delete:
+            clear = st.button('Clear',key='Clear-{}'.format(i))
+            i+=1
+            if clear:
+                history.drop(idx,axis=0,inplace=True)
+                if(len(history)==0):
+                    history = None
+                st.session_state['history'] = history
+                st.experimental_rerun()
     df_xlsx = to_excel(history)
-    st.download_button(label='📥 Export', data=df_xlsx, file_name='History.xlsx')        
+    st.download_button(label='📥 Export', data=df_xlsx, file_name='History.xlsx')
