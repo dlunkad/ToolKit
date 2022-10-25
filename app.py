@@ -37,11 +37,15 @@ elif choice == "Triangular":
 st.session_state['prev_choice'] = choice
 
 with st.form(key='form1'):
-    interest = st.number_input(label = "Enter the interest rate per period: ", key="interest", min_value = 0, max_value = 100)
+    rates = [np.NaN]*len(rows)
+    st.write("Enter the interest rate per period: ")
+    for i in range(len(rows)):
+        rates[i] = st.number_input(label = rows[i], key="interest-{}".format(rows[i]), min_value = 0, max_value = 100)
     n = st.number_input(label = "Enter the number of interest periods: ", key="year", min_value=1)
     submit = st.form_submit_button('Confirm')
-    if submit:
+    if not np.isnan(rates).any() and submit :
         st.session_state['data'] = None
+        st.session_state['solution'] = None
         st.session_state['history'] = None
 
 data = [[np.NaN]*len(rows)]*n
@@ -68,8 +72,8 @@ with st.form(key='form2'):
             st.session_state['old_data'] = new_df
             st.session_state['history'] = None
         if not new_df.isnull().values.any():
-            interest = interest/100.0
-            denominator = 1+interest
+            interest = 0
+            denominator = 1
             PVs = []
             cycle = 1000
             while cycle:
@@ -77,13 +81,18 @@ with st.form(key='form2'):
                 AV = 0
                 for i in range(n):
                     if choice == "Singular":
+                        interest = float(rates[0])
                         rand = float(new_df.iloc[i][0])
                     elif choice == "Uniform":
+                        interest = np.random.uniform(float(rates[0]), float(rates[1]))
                         rand = np.random.uniform(float(new_df.iloc[i][0]), float(new_df.iloc[i][1]))
                     elif choice == "Linear":
                         break
                     elif choice == "Triangular":
+                        interest = np.random.triangular(float(rates[0]), float(rates[1]), float(rates[2]))
                         rand = np.random.triangular(float(new_df.iloc[i][0]), float(new_df.iloc[i][1]), float(new_df.iloc[i][2]))
+                    interest = interest/100.0
+                    denominator = 1+interest
                     AV = AV + rand/(denominator**(i+1))
                 PVs.append(AV)
             IQR = ['75th', '50th', '25th']
