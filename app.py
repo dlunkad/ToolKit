@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 from st_aggrid import AgGrid, GridOptionsBuilder
 from io import BytesIO
+import matplotlib.pyplot as plt
+from scipy import stats
+from scipy.stats import norm
 
 st.set_page_config(layout="wide")
 
@@ -51,6 +54,25 @@ with st.form(key='form1'):
         st.session_state['data'] = None
         st.session_state['solution'] = None
 
+def drawBellCurve(x):
+    fig, ax = plt.subplots(2)
+    ax[0].hist(x, bins=25, density = True, color='b')
+    mu, std = norm.fit(x) 
+    xmin, xmax = ax[0].get_xlim()
+    x_curve = np.linspace(xmin, xmax, 100)
+    p_curve = norm.pdf(x_curve, mu, std)
+    ax[0].plot(x_curve, p_curve, 'k', linewidth=2)
+    ax[0].set_title("Distribution", fontsize = 10)
+
+    res = stats.cumfreq(x, numbins=25)
+    x_cum = res.lowerlimit + np.linspace(0, res.binsize*res.cumcount.size,res.cumcount.size)
+    ax[1].bar(x_cum, res.cumcount, width=4, color="b")
+    ax[1].set_xlim([x_cum.min(), x_cum.max()])
+    ax[1].set_title("Cummulative", fontsize = 10)
+
+    fig.tight_layout(pad=1.0)
+    return fig
+
 data = [[np.NaN]*len(rows)]*n
 with st.form(key='form2'):
     years = np.arange(n)
@@ -66,6 +88,7 @@ with st.form(key='form2'):
     submit_data = st.form_submit_button('Calculate')
     
     solution_df = st.session_state.get('solution')
+    solution_fig = st.session_state.get('fig')
     if submit_data:
         data = grid_return['data']
         new_df = data.copy()
@@ -77,7 +100,7 @@ with st.form(key='form2'):
             interest = 0
             denominator = 1
             PVs = []
-            cycle = 1000
+            cycle = 1000 #No of iterations
             while cycle:
                 cycle -= 1
                 AV = 0
@@ -102,17 +125,25 @@ with st.form(key='form2'):
             solution_df = pd.DataFrame(solution, columns = ['Present Value'])
             solution_df.insert(0, "Interquartile", IQR, allow_duplicates=True)
             solution_df.set_index('Interquartile', inplace=True)
+            solution_fig = drawBellCurve(PVs)
+
             st.session_state['solution'] = solution_df
             st.session_state['new_df'] = new_df
+            st.session_state['fig'] = solution_fig
 
     if solution_df is not None and not solution_df.isnull().values.any():
-        st.write(solution_df)
+        sol_df, sol_vis = st.columns((1,2))
+        with sol_df:
+            st.write(solution_df.style.set_precision(2))
+        with sol_vis:
+            st.pyplot(solution_fig)
+        
         save = st.form_submit_button('Save')
         if save:
             history = st.session_state.get('history')
             if history is None:
-                history = pd.DataFrame(columns = ["Rate", "Input", "75th", "50th","25th"])
-            history.loc[len(history), history.columns] = rates_df, st.session_state.get('new_df'), solution_df.iloc[0,0], solution_df.iloc[1,0], solution_df.iloc[2,0]
+                history = pd.DataFrame(columns = ["Rate", "Input", "Output"])
+            history.loc[len(history), history.columns] = rates_df, st.session_state.get('new_df'), round(solution_df,2)
             st.session_state['history'] = history
 
 def to_excel(df):
@@ -122,6 +153,7 @@ def to_excel(df):
     writer.save()
     processed_data = output.getvalue()
     return processed_data
+
 history = st.session_state.get('history')
 i = 0
 if history is not None:
@@ -143,13 +175,13 @@ if history is not None:
         roi, ip, op, delete = st.columns(4)
         rate = history.loc[idx][0]
         input = history.loc[idx][1]
-        output = history.loc[idx][2:]
+        output = history.loc[idx][2]
         with roi:
             st.write(rate)
         with ip:
             st.write(input)
         with op:
-            st.write(output)
+            st.write(output.style.set_precision(2))
         with delete:
             clear = st.button('Clear',key='Clear-{}'.format(i))
             i+=1
@@ -159,5 +191,5 @@ if history is not None:
                     history = None
                 st.session_state['history'] = history
                 st.experimental_rerun()
-    df_xlsx = to_excel(history)
+    df_xlsx = to_excel(history.round(2))
     st.download_button(label='📥 Export', data=df_xlsx, file_name='History.xlsx')
