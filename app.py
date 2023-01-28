@@ -101,6 +101,7 @@ with st.form(key='form2'):
             denominator = 1
             PVs = []
             cycle = 1000 #No of iterations
+            error = False
             while cycle:
                 cycle -= 1
                 AV = 0
@@ -114,22 +115,30 @@ with st.form(key='form2'):
                     elif choice == "Linear":
                         break
                     elif choice == "Triangular":
-                        interest = np.random.triangular(float(rates[0]), float(rates[1]), float(rates[2]))
-                        rand = np.random.triangular(float(new_df.iloc[i][0]), float(new_df.iloc[i][1]), float(new_df.iloc[i][2]))
+                        if (float(rates[0]) <= float(rates[1]) <= float(rates[2]) and float(rates[0]) < float(rates[2])) and (float(new_df.iloc[i][0]) <= float(new_df.iloc[i][1]) <= float(new_df.iloc[i][2]) and float(new_df.iloc[i][0]) < float(new_df.iloc[i][2])):
+                            interest = np.random.triangular(float(rates[0]), float(rates[1]), float(rates[2]))
+                            rand = np.random.triangular(float(new_df.iloc[i][0]), float(new_df.iloc[i][1]), float(new_df.iloc[i][2]))
+                        else:
+                            st.error("The condition left <= mode <= right must be satisfied!")
+                            error = True
+                            break
                     interest = interest/100.0
                     denominator = 1+interest
                     AV = AV + rand/(denominator**(i+1))
+                if error:
+                    break
                 PVs.append(AV)
-            IQR = ['75th', '50th', '25th']
-            solution = np.percentile(PVs, [75, 50, 25])
-            solution_df = pd.DataFrame(solution, columns = ['Present Value'])
-            solution_df.insert(0, "Interquartile", IQR, allow_duplicates=True)
-            solution_df.set_index('Interquartile', inplace=True)
-            solution_fig = drawBellCurve(PVs)
+            if not error:
+                IQR = ['75th', '50th', '25th']
+                solution = np.percentile(PVs, [75, 50, 25])
+                solution_df = pd.DataFrame(solution, columns = ['Present Value'])
+                solution_df.insert(0, "Interquartile", IQR, allow_duplicates=True)
+                solution_df.set_index('Interquartile', inplace=True)
+                solution_fig = drawBellCurve(PVs)
 
-            st.session_state['solution'] = solution_df
-            st.session_state['new_df'] = new_df
-            st.session_state['fig'] = solution_fig
+                st.session_state['solution'] = solution_df
+                st.session_state['new_df'] = new_df
+                st.session_state['fig'] = solution_fig
 
     if solution_df is not None and not solution_df.isnull().values.any():
         sol_df, sol_vis = st.columns((1,2))
