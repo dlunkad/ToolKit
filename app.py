@@ -119,7 +119,7 @@ with st.form(key='form2'):
                             interest = np.random.triangular(float(rates[0]), float(rates[1]), float(rates[2]))
                             rand = np.random.triangular(float(new_df.iloc[i][0]), float(new_df.iloc[i][1]), float(new_df.iloc[i][2]))
                         else:
-                            st.error("The condition left <= mode <= right must be satisfied!")
+                            st.error("The condition left <= mode <= right and left < right must be satisfied!")
                             error = True
                             break
                     interest = interest/100.0
