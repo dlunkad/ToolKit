@@ -45,7 +45,7 @@ st.session_state['prev_choice'] = choice
 with st.form(key='form1'):
     rates = [np.NaN]*len(rows)
     for i in range(len(rows)):
-        rates[i] = st.number_input(label = "Enter the interest rate per period: {} (%)".format(rows[i]), key="interest-{}".format(rows[i]), min_value = 0, max_value = 100)
+        rates[i] = st.number_input(label = "Enter the interest rate per period: {} (%)".format(rows[i]), key="interest-{}".format(rows[i]), min_value = -100, max_value = 100, value = 0)
     n = st.number_input(label = "Enter the number of interest periods: ", key="year", min_value=1)
     submit = st.form_submit_button('Confirm')
     rates_df = pd.DataFrame(columns = rows)
