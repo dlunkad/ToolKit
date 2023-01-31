@@ -7,6 +7,8 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.stats import norm
+import warnings
+warnings.filterwarnings("ignore")
 
 st.set_page_config(layout="wide")
 
@@ -45,7 +47,7 @@ st.session_state['prev_choice'] = choice
 with st.form(key='form1'):
     rates = [np.NaN]*len(rows)
     for i in range(len(rows)):
-        rates[i] = st.number_input(label = "Enter the interest rate per period: {} (%)".format(rows[i]), key="interest-{}".format(rows[i]), min_value = -100, max_value = 100, value = 0)
+        rates[i] = st.number_input(label = "Enter the interest rate per period: {} (%)".format(rows[i]), key="interest-{}".format(rows[i]), min_value = -100.0, max_value = 100.0, value = 0.0, step = 1.0)
     n = st.number_input(label = "Enter the number of interest periods: ", key="year", min_value=1)
     submit = st.form_submit_button('Confirm')
     rates_df = pd.DataFrame(columns = rows)
@@ -53,6 +55,7 @@ with st.form(key='form1'):
     if not np.isnan(rates).any() and submit :
         st.session_state['data'] = None
         st.session_state['solution'] = None
+        st.session_state['error'] = False
 
 def drawBellCurve(x):
     fig, ax = plt.subplots(2)
@@ -64,6 +67,7 @@ def drawBellCurve(x):
     ax[0].plot(x_curve, p_curve, 'k', linewidth=2)
     ax[0].set_title("Distribution", fontsize = 10)
 
+    print(x)
     res = stats.cumfreq(x, numbins=25)
     x_cum = res.lowerlimit + np.linspace(0, res.binsize*res.cumcount.size,res.cumcount.size)
     ax[1].bar(x_cum, res.cumcount, width=4, color="b")
@@ -89,6 +93,7 @@ with st.form(key='form2'):
     
     solution_df = st.session_state.get('solution')
     solution_fig = st.session_state.get('fig')
+    error = st.session_state.get('error')
     if submit_data:
         data = grid_return['data']
         new_df = data.copy()
@@ -118,6 +123,7 @@ with st.form(key='form2'):
                         if (float(rates[0]) <= float(rates[1]) <= float(rates[2]) and float(rates[0]) < float(rates[2])) and (float(new_df.iloc[i][0]) <= float(new_df.iloc[i][1]) <= float(new_df.iloc[i][2]) and float(new_df.iloc[i][0]) < float(new_df.iloc[i][2])):
                             interest = np.random.triangular(float(rates[0]), float(rates[1]), float(rates[2]))
                             rand = np.random.triangular(float(new_df.iloc[i][0]), float(new_df.iloc[i][1]), float(new_df.iloc[i][2]))
+                            error = False
                         else:
                             st.error("The condition left <= mode <= right and left < right must be satisfied!")
                             error = True
@@ -139,8 +145,12 @@ with st.form(key='form2'):
                 st.session_state['solution'] = solution_df
                 st.session_state['new_df'] = new_df
                 st.session_state['fig'] = solution_fig
+        else:
+            st.error("Please enter numeric amounts!")
+            error = True
 
-    if solution_df is not None and not solution_df.isnull().values.any():
+    st.session_state['error'] = error
+    if error is False and solution_df is not None and not solution_df.isnull().values.any():
         sol_df, sol_vis = st.columns((1,2))
         with sol_df:
             st.write(solution_df.style.set_precision(2))
