@@ -2,4 +2,3 @@ streamlit-aggrid
 xlsxwriter
 matplotlib
 scipy
-seaborn
