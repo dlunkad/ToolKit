@@ -50,17 +50,32 @@ with st.form(key='form1'):
         st.session_state['solution'] = None
         st.session_state['error'] = False
 
-def drawBellCurve(x):
+def drawBellCurve(x, isSingular):
     x.sort()
-    fig, ax = plt.subplots(2)
-    mean, std = norm.fit(x) 
-    mean, std = round(mean,2), round(std,2)
-    y_pdf = norm.pdf(x, mean, std)
-    y_cdf = norm.cdf(x, mean, std)
-    ax[0].hist(x, bins=25, density = True,  alpha=0.5, ec='black', histtype='bar')
-    ax[0].plot(x, y_pdf, color ='blue', label='Probability Distribution Function')
-    ax[1].plot(x, y_cdf, color ='red', label='Cumulative Distribution Function')
-    fig.legend()
+    if isSingular:
+        plt.hist(x, bins=25, density = True,  alpha=0.5, ec='black', histtype='bar')
+        return plt.gcf()
+    else:
+        fig, ax = plt.subplots(2)
+        mean, std = norm.fit(x) 
+        mean, std = round(mean,2), round(std,2)
+        y_pdf = norm.pdf(x, mean, std)
+        y_cdf = norm.cdf(x, mean, std)
+        
+        n, bins, _ = ax[0].hist(x, bins=25, density = False,  alpha=0.5, ec='black', histtype='bar')
+        ax[0].plot(x, y_pdf * sum(n * np.diff(bins)), color ='blue', label='Probability Distribution Function')
+        
+        ax[1].plot(x, y_cdf, color ='red', label='Cumulative Distribution Function')
+        xmin, xmax = ax[1].get_xlim()
+        ymin, ymax = ax[1].get_ylim()
+        ypoint = [0.2,0.4,0.6,0.8]
+        xpoint = np.interp(ypoint, y_cdf, x)
+        ax[1].hlines(y=ypoint, xmin=xmin, xmax=xpoint,linestyles='dashed')
+        ax[1].vlines(x=xpoint, ymin=ymin, ymax=ypoint,linestyles='dashed')
+        plt.xlim(xmin, xmax)
+        plt.ylim(ymin, ymax)
+
+        fig.legend()
     return fig
 
 data = [[np.NaN]*len(rows)]*n
@@ -91,7 +106,7 @@ with st.form(key='form2'):
             interest = 0
             denominator = 1
             PVs = []
-            cycle = 1000 #No of iterations
+            cycle = 5000 #No of iterations
             error = False
             while cycle:
                 cycle -= 1
@@ -124,7 +139,7 @@ with st.form(key='form2'):
                 solution_df = pd.DataFrame(solution, columns = ['Present Value'])
                 solution_df.insert(0, "Interquartile", IQR, allow_duplicates=True)
                 solution_df.set_index('Interquartile', inplace=True)
-                solution_fig = drawBellCurve(PVs)
+                solution_fig = drawBellCurve(PVs, choice == "Singular")
 
                 st.session_state['solution'] = solution_df
                 st.session_state['new_df'] = new_df
