@@ -129,7 +129,7 @@ with st.form(key='form2'):
                             break
                     interest = interest/100.0
                     denominator = 1+interest
-                    AV = AV + rand/(denominator**(i+1))
+                    AV = AV + rand/(denominator**i)
                 if error:
                     break
                 PVs.append(AV)
