@@ -152,7 +152,7 @@ with st.form(key='form2'):
     if error is False and solution_df is not None and not solution_df.isnull().values.any():
         sol_df, sol_vis = st.columns((1,2))
         with sol_df:
-            st.write(solution_df.style.set_precision(2))
+            st.write(solution_df.style.format({"Present Value": "{:.2f}"}))
         with sol_vis:
             st.pyplot(solution_fig)
         
@@ -199,7 +199,7 @@ if history is not None:
         with ip:
             st.write(input)
         with op:
-            st.write(output.style.set_precision(2))
+            st.write(output.style.format({"Present Value": "{:.2f}"}))
         with delete:
             clear = st.button('Clear',key='Clear-{}'.format(i))
             i+=1
